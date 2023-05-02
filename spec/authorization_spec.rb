@@ -99,6 +99,20 @@ describe Pundit::Authorization do
       expect { controller.authorize(Post.new) }.to raise_error(Pundit::NotAuthorizedError)
     end
 
+    it "returns the record when policy returns a Pundit::Authorized class" do
+      allow(user).to receive(:admin?).and_return(true)
+
+      expect(controller.authorize(comment, :update?)).to eq(comment)
+    end
+
+    it "raises an exception with a reason when the policy returns a Pundit::NotAuthorized class" do
+      allow(user).to receive(:admin?).and_return(false)
+
+      expect { controller.authorize(comment, :update?) }.to raise_error(Pundit::NotAuthorizedError) do |error|
+        expect(error.reason).to eq(:not_admin)
+      end
+    end
+
     it "throws an exception when a policy cannot be found" do
       expect { controller.authorize(Article) }.to raise_error(Pundit::NotDefinedError)
     end

@@ -23,7 +23,7 @@ module Pundit
 
   # Error that will be raised when authorization has failed
   class NotAuthorizedError < Error
-    attr_reader :query, :record, :policy
+    attr_reader :query, :record, :policy, :reason
 
     def initialize(options = {})
       if options.is_a? String
@@ -32,6 +32,7 @@ module Pundit
         @query  = options[:query]
         @record = options[:record]
         @policy = options[:policy]
+        @reason = options[:reason]
 
         message = options.fetch(:message) { "not allowed to #{query} this #{record.class}" }
       end
@@ -53,6 +54,22 @@ module Pundit
 
   # Error that will be raised if a policy or policy scope is not defined.
   class NotDefinedError < Error; end
+
+  class Authorized
+    attr_reader :reason
+
+    def initialize(reason = nil)
+      @reason = reason
+    end
+  end
+
+  class NotAuthorized
+    attr_reader :reason
+
+    def initialize(reason = nil)
+      @reason = reason
+    end
+  end
 
   def self.included(base)
     ActiveSupport::Deprecation.warn <<~WARNING
@@ -81,7 +98,12 @@ module Pundit
         cache[possibly_namespaced_record] ||= policy!(user, possibly_namespaced_record)
       end
 
-      raise NotAuthorizedError, query: query, record: record, policy: policy unless policy.public_send(query)
+      result = policy.public_send(query)
+      if !result
+        raise NotAuthorizedError, query: query, record: record, policy: policy
+      elsif result.is_a? NotAuthorized
+        raise NotAuthorizedError, query: query, record: record, policy: policy, reason: result.reason
+      end
 
       record
     end

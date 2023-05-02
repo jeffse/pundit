@@ -96,6 +96,12 @@ class CommentPolicy < Struct.new(:user, :comment)
       CommentScope.new(scope)
     end
   end
+
+  def update?
+    return Pundit::NotAuthorized.new(:not_admin) unless user.admin?
+
+    Pundit::Authorized.new(:admin)
+  end
 end
 
 class PublicationPolicy < Struct.new(:user, :publication)
